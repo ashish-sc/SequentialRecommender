@@ -4,10 +4,10 @@ from multiprocessing import Process, Queue, set_start_method
 
 def random_neq(left, right, s):
     t = np.random.randint(left, right)
-    
     while t in s:
         t = np.random.randint(left, right)
     return t
+
 
 def sample_function(
     user_train, user_feat, usernum, itemnum, batch_size, maxlen, result_queue, seed
