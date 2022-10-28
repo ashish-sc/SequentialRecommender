@@ -6,3 +6,5 @@ For running this code install following dependencies:
 #### SentenceTransformer
 #### google-cloud-bigquery
 
+Run the file `main_code.py` for training the model and getting the metrics.
+Current metrics are ndcg@10 and hit@10.

@@ -5,13 +5,6 @@ from src.model import SASREC, Encoder, LayerNormalization
 class SSEPT(SASREC):
     """
     SSE-PT Model
-
-    :Citation:
-
-    Wu L., Li S., Hsieh C-J., Sharpnack J., SSE-PT: Sequential Recommendation
-    Via Personalized Transformer, RecSys, 2020.
-    TF 1.x codebase: https://github.com/SSE-PT/SSE-PT
-    TF 2.x codebase (SASREc): https://github.com/nnkkmto/SASRec-tf2
     """
 
     def __init__(self, **kwargs):

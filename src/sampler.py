@@ -10,7 +10,7 @@ def random_neq(left, right, s):
 
 
 def sample_function(
-    user_train, user_feat, usernum, itemnum, batch_size, maxlen, result_queue, seed
+        user_train, user_feat, usernum, itemnum, batch_size, maxlen, result_queue, seed
 ):
     """Batch sampler that creates a sequence of negative items based on the
     original sequence of items (positive) that the user has interacted with.
@@ -40,8 +40,9 @@ def sample_function(
 
         ts = set(user_train[user])
         seqLen = len(user_feat[user][-1])
-        seq_feat, pos_feat, neg_feat = np.zeros((maxlen,seqLen), dtype=list), np.zeros((maxlen,seqLen), dtype=list), np.zeros((maxlen,seqLen), dtype=np.float32)
-        
+        seq_feat, pos_feat, neg_feat = np.zeros((maxlen, seqLen), dtype=list), np.zeros((maxlen, seqLen), dtype=list), \
+                                       np.zeros((maxlen, seqLen), dtype=np.float32)
+
         for i, j in zip(reversed(user_train[user][:-1]), reversed(user_feat[user][:-1])):
             seq[idx] = i
             pos[idx] = nxt
@@ -59,7 +60,7 @@ def sample_function(
     np.random.seed(seed)
     while True:
         one_batch = []
-        for i in range(batch_size):
+        for _ in range(batch_size):
             one_batch.append(sample())
 
         result_queue.put(zip(*one_batch))
