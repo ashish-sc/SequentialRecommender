@@ -26,7 +26,6 @@ def sample_function(
     """
 
     def sample():
-
         user = np.random.randint(1, usernum + 1)
         while len(user_train[user]) <= 1:
             user = np.random.randint(1, usernum + 1)

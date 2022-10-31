@@ -1,6 +1,7 @@
 import re
 import sys
 import os
+
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 import json
 import numpy as np
@@ -8,8 +9,8 @@ import pandas as pd
 import gc
 import tensorflow as tf
 import time
-tf.get_logger().setLevel('ERROR')  # only show error messages
 
+tf.get_logger().setLevel('ERROR')  # only show error messages
 
 # Transformer Based Models
 from src.ssept import SSEPT
@@ -17,6 +18,7 @@ from src.ssept import SSEPT
 # Sampler for sequential prediction
 from src.sampler import WarpSampler
 from src.util import SASRecDataSet
+
 # from google.cloud import bigquery
 
 print("System version: {}".format(sys.version))
@@ -141,16 +143,15 @@ num_epochs = 5
 batch_size = 2
 RANDOM_SEED = 100  # Set None for non-deterministic result
 
-lr = 0.001             # learning rate
-maxlen = 50            # maximum sequence length for each user
-num_blocks = 2         # number of transformer blocks
-hidden_units = 100     # number of units in the attention calculation
-num_heads = 1          # number of attention heads
-dropout_rate = 0.1     # dropout rate
-l2_emb = 0.0           # L2 regularization coefficient
-num_neg_test = 100     # number of negative examples per positive example
+lr = 0.001  # learning rate
+maxlen = 50  # maximum sequence length for each user
+num_blocks = 2  # number of transformer blocks
+hidden_units = 100  # number of units in the attention calculation
+num_heads = 1  # number of attention heads
+dropout_rate = 0.1  # dropout rate
+l2_emb = 0.0  # L2 regularization coefficient
+num_neg_test = 100  # number of negative examples per positive example
 model_name = 'ssept'  # 'sasrec' or 'ssept'
-
 
 if __name__ == "__main__":
     data = SASRecDataSet(filename='data/isp_set_forSSEPT2.tsv', col_sep="\t")
@@ -159,27 +160,27 @@ if __name__ == "__main__":
     data.split()
 
     model = SSEPT(item_num=data.itemnum,
-                      user_num=data.usernum,
-                      seq_max_len=maxlen,
-                      num_blocks=num_blocks,
-    #                   embedding_dim=hidden_units,  # optional
-                      user_embedding_dim=10,
-                      item_embedding_dim=hidden_units,
-                      attention_dim=hidden_units,
-                      attention_num_heads=num_heads,
-                      dropout_rate=dropout_rate,
-                      conv_dims=[110, 110],
-                      l2_reg=l2_emb,
-                      num_neg_test=num_neg_test
-        )
+                  user_num=data.usernum,
+                  seq_max_len=maxlen,
+                  num_blocks=num_blocks,
+                  # embedding_dim=hidden_units,  # optional
+                  user_embedding_dim=10,
+                  item_embedding_dim=hidden_units,
+                  attention_dim=hidden_units,
+                  attention_num_heads=num_heads,
+                  dropout_rate=dropout_rate,
+                  conv_dims=[110, 110],
+                  l2_reg=l2_emb,
+                  num_neg_test=num_neg_test
+                  )
 
-    sampler = WarpSampler(data.user_train, data.user_train_feat, data.usernum, data.itemnum, batch_size=batch_size, maxlen=maxlen, n_workers=3)
+    sampler = WarpSampler(data.user_train, data.user_train_feat, data.usernum, data.itemnum, batch_size=batch_size,
+                          maxlen=maxlen, n_workers=3)
 
     start = time.time()
     t_test = model.train(data, sampler, num_epochs=num_epochs, batch_size=batch_size, lr=lr, val_epoch=6)
     end = time.time()
-    train_time = end-start
-    print('Time cost for training is {0:.2f} mins'.format(end-start))
+    train_time = end - start
+    print('Time cost for training is {0:.2f} mins'.format(end - start))
     res_syn = {"ndcg@10": t_test[0], "Hit@10": t_test[1]}
     print(res_syn)
-

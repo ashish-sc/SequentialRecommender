@@ -1,5 +1,3 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
 import random
 import numpy as np
 from tqdm import tqdm
@@ -365,16 +363,6 @@ class LayerNormalization(tf.keras.layers.Layer):
 class SASREC(tf.keras.Model):
     """SAS Rec model
     Self-Attentive Sequential Recommendation Using Transformer
-
-    :Citation:
-
-        Wang-Cheng Kang, Julian McAuley (2018), Self-Attentive Sequential
-        Recommendation. Proceedings of IEEE International Conference on
-        Data Mining (ICDM'18)
-
-        Original source code from nnkkmto/SASRec-tf2,
-        https://github.com/nnkkmto/SASRec-tf2
-
     """
 
     def __init__(self, **kwargs):
@@ -619,24 +607,6 @@ class SASREC(tf.keras.Model):
         neg = tf.keras.preprocessing.sequence.pad_sequences(
             neg, padding="pre", truncating="pre", maxlen=self.seq_max_len
         )
-        #print("seq ",type(seq))
-        #for _ in range(self.seq_max_len-lens):
-        #    seq_feat[0][_] = np.asarray([0.]*66)
-        #    pos_feat[0][_] = np.asarray([0.]*66)
-        #    neg_feat[0][_] = np.asarray([0.]*66)
-        #seq_feat[0][0:self.seq_max_len-lens] = [0]*66
-
-        #seq_feat = tf.keras.preprocessing.sequence.pad_sequences(
-        #    seq_feat, padding="pre", truncating="pre", maxlen=self.seq_max_len
-        #)
-        #pos_feat = tf.keras.preprocessing.sequence.pad_sequences(
-        #    pos_feat, padding="pre", truncating="pre", maxlen=self.seq_max_len
-        #)
-        #neg_feat = tf.keras.preprocessing.sequence.pad_sequences(
-        #    neg_feat, padding="pre", truncating="pre", maxlen=self.seq_max_len
-        #)
-
-
 
         inputs["users"] = np.expand_dims(np.array(u), axis=-1)
         inputs["input_seq"] = seq
