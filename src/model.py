@@ -658,9 +658,9 @@ class SASREC(tf.keras.Model):
                 "negative": tf.TensorSpec(
                     shape=(None, self.seq_max_len), dtype=tf.float32
                 ),
-                "seq_feat": tf.TensorSpec(shape=(None,self.seq_max_len), dtype=tf.float32),
-                "pos_feat": tf.TensorSpec(shape=(None,self.seq_max_len), dtype=tf.float32),
-                "neg_feat": tf.TensorSpec(shape=(None,self.seq_max_len), dtype=tf.float32),
+                "seq_feat": tf.TensorSpec(shape=(None, self.seq_max_len), dtype=tf.float32),
+                "pos_feat": tf.TensorSpec(shape=(None, self.seq_max_len), dtype=tf.float32),
+                "neg_feat": tf.TensorSpec(shape=(None, self.seq_max_len), dtype=tf.float32),
             },
             tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
         ]
@@ -668,9 +668,7 @@ class SASREC(tf.keras.Model):
         #@tf.function(input_signature=train_step_signature)
         def train_step(inp, tar):
             with tf.GradientTape() as tape:
-                #print("inp keys ",inp)
                 pos_logits, neg_logits, loss_mask = self(inp, training=True)
-                #print("after inp")
                 loss = loss_function(pos_logits, neg_logits, loss_mask)
 
             gradients = tape.gradient(loss, self.trainable_variables)
@@ -726,6 +724,9 @@ class SASREC(tf.keras.Model):
         train = dataset.user_train  # removing deepcopy
         valid = dataset.user_valid
         test = dataset.user_test
+        train_feat = dataset.user_train_feat
+        valid_feat = dataset.user_valid_feat
+        test_feat = dataset.user_test_feat
 
         NDCG = 0.0
         HT = 0.0
@@ -742,11 +743,15 @@ class SASREC(tf.keras.Model):
                 continue
 
             seq = np.zeros([self.seq_max_len], dtype=np.int32)
+            seq_len = len(valid_feat[1])
+            seq_feat = np.zeros((self.seq_max_len, seq_len), dtype=list)
             idx = self.seq_max_len - 1
             seq[idx] = valid[u][0]
+            seq_feat[idx] = valid_feat[u][0]
             idx -= 1
-            for i in reversed(train[u]):
+            for i, j in zip(reversed(train[u]), reversed(train_feat[u])):
                 seq[idx] = i
+                seq_feat[idx] = j
                 idx -= 1
                 if idx == -1:
                     break
@@ -759,10 +764,8 @@ class SASREC(tf.keras.Model):
                     t = np.random.randint(1, itemnum + 1)
                 item_idx.append(t)
 
-            inputs = {}
-            inputs["user"] = np.expand_dims(np.array([u]), axis=-1)
-            inputs["input_seq"] = np.array([seq])
-            inputs["candidate"] = np.array([item_idx])
+            inputs = {"user": np.expand_dims(np.array([u]), axis=-1), "input_seq": np.array([seq]), "input_feat": np.array([seq_feat]),
+                      "candidate": np.array([item_idx])}
 
             # inverse to get descending sort
             predictions = -1.0 * self.predict(inputs)

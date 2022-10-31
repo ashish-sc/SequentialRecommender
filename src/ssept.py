@@ -142,9 +142,9 @@ class SSEPT(SASREC):
         seq_emb = tf.cast(seq_emb, dtype=tf.float32)
         pos_emb = tf.cast(pos_emb, dtype=tf.float32)
         neg_emb = tf.cast(neg_emb, dtype=tf.float32)
-        seq_feat = tf.reshape(seq_feat, [seq_emb.shape[0],seq_feat.shape[2]])
-        pos_feat = tf.reshape(pos_feat, [pos_emb.shape[0],pos_feat.shape[2]])
-        neg_feat = tf.reshape(neg_feat, [neg_emb.shape[0],neg_feat.shape[2]])
+        seq_feat = tf.reshape(seq_feat, [seq_emb.shape[0], seq_feat.shape[2]])
+        pos_feat = tf.reshape(pos_feat, [pos_emb.shape[0], pos_feat.shape[2]])
+        neg_feat = tf.reshape(neg_feat, [neg_emb.shape[0], neg_feat.shape[2]])
 
         seq_emb = tf.concat([seq_emb, seq_feat], 1)
         pos_emb = tf.concat([pos_emb, pos_feat], 1)
@@ -177,6 +177,7 @@ class SSEPT(SASREC):
         user = inputs["user"]
         input_seq = inputs["input_seq"]
         candidate = inputs["candidate"]
+        seq_feat = inputs["seq_feat"]
 
         mask = tf.expand_dims(tf.cast(tf.not_equal(input_seq, 0), tf.float32), -1)
         seq_embeddings, positional_embeddings = self.embedding(input_seq)  # (1, s, h)
@@ -204,6 +205,10 @@ class SSEPT(SASREC):
             seq_attention,
             [tf.shape(input_seq)[0] * self.seq_max_len, self.hidden_units],
         )  # (b*s1, h1+h2)
+
+        seq_emb = tf.cast(seq_emb, dtype=tf.float32)
+        seq_feat = tf.reshape(seq_feat, [seq_emb.shape[0], seq_feat.shape[2]])
+        seq_emb = tf.concat([seq_emb, seq_feat], 1)
 
         candidate_emb = self.item_embedding_layer(candidate)  # (b, s2, h2)
         candidate_emb = tf.squeeze(candidate_emb, axis=0)  # (s2, h2)
