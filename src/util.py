@@ -1,6 +1,8 @@
 from collections import defaultdict
 import pandas as pd
+import numpy as np
 from sentence_transformers import SentenceTransformer
+
 
 class SASRecDataSet:
     """
@@ -24,6 +26,7 @@ class SASRecDataSet:
         self.itemnum = 0
         self.User = defaultdict(list)
         self.User_feat = defaultdict(list)
+        self.item_feat = defaultdict(list)
         self.Items = set()
         self.user_train = {}
         self.user_valid = {}
@@ -61,13 +64,14 @@ class SASRecDataSet:
 
         df = df.iloc[1:, :]
         df = df.fillna('')
+        item_feat_temp = defaultdict(list)
         model = SentenceTransformer('all-MiniLM-L6-v2')
         user_li, item_li = [], []
         for ind, row in df.iterrows():
             u, uemb, ubias, i, iemb, ibias, tagname, referrer = row['userId'], row['user_emb'], row['user_bias'], row['postId'], row[
                 'post_emb'], row['post_bias'], row['tagName'], row['referrer']
-            referrerEmb = model.encode(referrer)
-            tag_name_emb = model.encode(tagname)
+            #referrerEmb = model.encode(referrer)
+            #tag_name_emb = model.encode(tagname)
             u = int(float(u))
             if u not in user_li:
                 user_li.append(u)
@@ -84,12 +88,16 @@ class SASRecDataSet:
             for _ in iemb.strip('][').split():
                 temp_li.append(float(_))
             temp_li.append(float(ibias))
-            for _ in tag_name_emb:
-                temp_li.append(float(_))
+            # for _ in tag_name_emb:
+            #     temp_li.append(float(_))
             #for _ in referrerEmb:
             #    temp_li.append(_)
             self.User[user_li.index(u)+1].append(item_li.index(i)+1)
             self.User_feat[user_li.index(u)+1].append(temp_li)
+            item_feat_temp[item_li.index(i)+1].append(temp_li)
+
+        for _ in item_feat_temp.keys():
+            self.item_feat[_] = np.mean(item_feat_temp[_], axis=0)
 
         for user in self.User:
             nfeedback = len(self.User[user])

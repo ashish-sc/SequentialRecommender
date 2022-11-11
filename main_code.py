@@ -1,4 +1,3 @@
-import re
 import sys
 import os
 
@@ -8,7 +7,9 @@ import numpy as np
 import pandas as pd
 import gc
 import tensorflow as tf
+from pathlib import Path
 import time
+import pickle
 
 tf.get_logger().setLevel('ERROR')  # only show error messages
 
@@ -153,11 +154,21 @@ l2_emb = 0.0  # L2 regularization coefficient
 num_neg_test = 100  # number of negative examples per positive example
 model_name = 'ssept'  # 'sasrec' or 'ssept'
 
-if __name__ == "__main__":
-    data = SASRecDataSet(filename='data/isp_set_forSSEPT2.tsv', col_sep="\t")
 
+def data_prep():
+    data = SASRecDataSet(filename='data/isp_set_forSSEPT2.tsv', col_sep="\t")
     # create train, validation and test splits
     data.split()
+
+    with open('data.p', 'wb') as fp:
+        pickle.dump(data, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+if __name__ == "__main__":
+    data_prep()
+    print("data read complete")
+    with open('data.p', 'rb') as fp:
+        data = pickle.load(fp)
 
     model = SSEPT(item_num=data.itemnum,
                   user_num=data.usernum,
@@ -174,11 +185,28 @@ if __name__ == "__main__":
                   num_neg_test=num_neg_test
                   )
 
-    sampler = WarpSampler(data.user_train, data.user_train_feat, data.usernum, data.itemnum, batch_size=batch_size,
+    sampler = WarpSampler(data.user_train, data.user_train_feat, data.item_feat, data.usernum, data.itemnum, batch_size=batch_size,
                           maxlen=maxlen, n_workers=3)
 
+    checkpoint_path = Path("./training_1/cp.ckpt")
+    checkpoint_dir = os.path.dirname(checkpoint_path)
+
+    # Create a callback that saves the model's weights
+    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                                     save_weights_only=True,
+                                                     verbose=1)
     start = time.time()
     t_test = model.train(data, sampler, num_epochs=num_epochs, batch_size=batch_size, lr=lr, val_epoch=6)
+
+    # Save model weights
+    path = 'Weights_folder/Weights'
+    model.save_weights(path)
+    print('Model Saved!')
+
+    # load model
+    savedModel = model.load_weights(path)
+    print('Model Loaded!')
+
     end = time.time()
     train_time = end - start
     print('Time cost for training is {0:.2f} mins'.format(end - start))

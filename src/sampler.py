@@ -1,16 +1,17 @@
 import numpy as np
 from multiprocessing import Process, Queue, set_start_method
+from operator import itemgetter
 
 
 def random_neq(left, right, s):
     t = np.random.randint(left, right)
     while t in s:
         t = np.random.randint(left, right)
-    return t
+    return int(t)
 
 
 def sample_function(
-        user_train, user_feat, usernum, itemnum, batch_size, maxlen, result_queue, seed
+        user_train, user_feat, item_feat, usernum, itemnum, batch_size, maxlen, result_queue, seed
 ):
     """Batch sampler that creates a sequence of negative items based on the
     original sequence of items (positive) that the user has interacted with.
@@ -30,9 +31,9 @@ def sample_function(
         while len(user_train[user]) <= 1:
             user = np.random.randint(1, usernum + 1)
 
-        seq = np.zeros([maxlen], dtype=np.float)
-        pos = np.zeros([maxlen], dtype=np.float)
-        neg = np.zeros([maxlen], dtype=np.float)
+        seq = np.zeros([maxlen], dtype=np.float64)
+        pos = np.zeros([maxlen], dtype=np.float64)
+        neg = np.zeros([maxlen], dtype=np.float64)
         nxt = user_train[user][-1]
         feat = user_feat[user][-1]
         idx = maxlen - 1
@@ -40,19 +41,35 @@ def sample_function(
         ts = set(user_train[user])
         seqLen = len(user_feat[user][-1])
         seq_feat, pos_feat, neg_feat = np.zeros((maxlen, seqLen), dtype=list), np.zeros((maxlen, seqLen), dtype=list), \
-                                       np.zeros((maxlen, seqLen), dtype=np.float32)
+                                       np.zeros((maxlen, seqLen), dtype=list)
 
-        for i, j in zip(reversed(user_train[user][:-1]), reversed(user_feat[user][:-1])):
-            seq[idx] = i
-            pos[idx] = nxt
-            seq_feat[idx] = j
-            pos_feat[idx] = feat
-            if nxt != 0:
-                neg[idx] = random_neq(1, itemnum + 1, ts)
-            nxt, feat = i, j
-            idx -= 1
-            if idx == -1:
-                break
+        # for i, j in zip(reversed(user_train[user][:-1]), reversed(user_feat[user][:-1])):
+        #     seq[idx] = i
+        #     pos[idx] = nxt
+        #     seq_feat[idx] = j
+        #     pos_feat[idx] = feat
+        #     # print("feat ",feat)
+        #     if nxt != 0:
+        #         neg[idx] = random_neq(1, itemnum + 1, ts)
+        #         # print("neg[idx] ", neg[idx], " item_feat[neg[idx]] ",item_feat[neg[idx]][0])
+        #         neg_feat[idx] = list(item_feat[neg[idx]][0])
+        #     nxt, feat = i, j
+        #     idx -= 1
+        #     if idx == -1:
+        #         break
+
+        len_utrain, len_ufeat = len(user_train[user][:-1]), len(user_feat[user][:-1])
+        if maxlen > len_utrain:
+            seq[maxlen-len_utrain:], pos[maxlen-len_utrain-1:] = user_train[user][:-1], user_train[user]
+        else:
+            seq, pos = user_train[user][-maxlen-1:-1], user_train[user][-maxlen:]
+        neg = [random_neq(1, itemnum + 1, ts) for _ in range(maxlen)]
+        if maxlen > len_ufeat:
+            seq_feat[maxlen-len_ufeat:], pos_feat[maxlen-len_ufeat-1:] = np.array(user_feat[user][:-1]), np.array(user_feat[user])
+        else:
+            seq_feat, pos_feat = np.array(user_feat[user][-maxlen-1:-1]), np.array(
+                user_feat[user][-maxlen:])
+        neg_feat = itemgetter(*neg)(item_feat)
 
         return user, seq, pos, neg, seq_feat, pos_feat, neg_feat
 
@@ -77,7 +94,7 @@ class WarpSampler(object):
         n_workers (int): number of workers for parallel execution
     """
 
-    def __init__(self, User, User_feat, usernum, itemnum, batch_size=64, maxlen=10, n_workers=1):
+    def __init__(self, User, User_feat, item_feat, usernum, itemnum, batch_size=64, maxlen=10, n_workers=1):
         self.result_queue = Queue(maxsize=n_workers * 10)
         self.processors = []
         for i in range(n_workers):
@@ -87,12 +104,13 @@ class WarpSampler(object):
                     args=(
                         User,
                         User_feat,
+                        item_feat,
                         usernum,
                         itemnum,
                         batch_size,
                         maxlen,
                         self.result_queue,
-                        np.random.randint(2e9),
+                        2022,#np.random.randint(2e9),
                     ),
                 )
             )

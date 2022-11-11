@@ -391,6 +391,7 @@ class SASREC(tf.keras.Model):
         self.dropout_rate = kwargs.get("dropout_rate", 0.5)
         self.l2_reg = kwargs.get("l2_reg", 0.0)
         self.num_neg_test = kwargs.get("num_neg_test", 100)
+        self.item_feat = {}
 
         self.item_embedding_layer = tf.keras.layers.Embedding(
             self.item_num + 1,
@@ -596,8 +597,7 @@ class SASREC(tf.keras.Model):
         This function is used only during training.
         """
         inputs = {}
-        #print("len seq ",seq)
-        #lens = len(seq[0])
+
         seq = tf.keras.preprocessing.sequence.pad_sequences(
             seq, padding="pre", truncating="pre", maxlen=self.seq_max_len
         )
@@ -696,19 +696,19 @@ class SASREC(tf.keras.Model):
                 step_loss.append(loss)
 
             if epoch % val_epoch == 0:
-                t0.stop()
-                t1 = t0.interval
-                T += t1
+                # t0.stop()
+                # t1 = t0.interval
+                # T += t1
                 print("Evaluating...")
                 t_test = self.evaluate(dataset)
                 t_valid = self.evaluate_valid(dataset)
                 print(
-                    f"\nepoch: {epoch}, time: {T}, valid (NDCG@10: {t_valid[0]}, HR@10: {t_valid[1]})"
+                    f"\nepoch: {epoch},  valid (NDCG@10: {t_valid[0]}, HR@10: {t_valid[1]})"
                 )
                 print(
-                    f"epoch: {epoch}, time: {T},  test (NDCG@10: {t_test[0]}, HR@10: {t_test[1]})"
+                    f"epoch: {epoch},   test (NDCG@10: {t_test[0]}, HR@10: {t_test[1]})"
                 )
-                t0.start()
+                # t0.start()
 
         t_test = self.evaluate(dataset)
         print(f"\nepoch: {epoch}, test (NDCG@10: {t_test[0]}, HR@10: {t_test[1]})")
@@ -727,6 +727,7 @@ class SASREC(tf.keras.Model):
         train_feat = dataset.user_train_feat
         valid_feat = dataset.user_valid_feat
         test_feat = dataset.user_test_feat
+        item_feat = dataset.item_feat
 
         NDCG = 0.0
         HT = 0.0
@@ -742,9 +743,10 @@ class SASREC(tf.keras.Model):
             if len(train[u]) < 1 or len(test[u]) < 1:
                 continue
 
-            seq = np.zeros([self.seq_max_len], dtype=np.int32)
-            seq_len = len(valid_feat[1])
+            seq = np.zeros([self.seq_max_len], dtype=np.float64)
+            seq_len = len(valid_feat[u][0])
             seq_feat = np.zeros((self.seq_max_len, seq_len), dtype=list)
+            cand_feat = np.zeros((self.num_neg_test+1, seq_len), dtype=list)
             idx = self.seq_max_len - 1
             seq[idx] = valid[u][0]
             seq_feat[idx] = valid_feat[u][0]
@@ -758,14 +760,23 @@ class SASREC(tf.keras.Model):
             rated = set(train[u])
             rated.add(0)
             item_idx = [test[u][0]]
+            try:
+                cand_feat[0] = list(item_feat[test[u][0]])
+            except:
+                pass
             for _ in range(self.num_neg_test):
                 t = np.random.randint(1, itemnum + 1)
                 while t in rated:
                     t = np.random.randint(1, itemnum + 1)
                 item_idx.append(t)
+                try:
+                    cand_feat[_+1] = list(item_feat[t])
+                except:
+                    pass
 
-            inputs = {"user": np.expand_dims(np.array([u]), axis=-1), "input_seq": np.array([seq]), "input_feat": np.array([seq_feat]),
-                      "candidate": np.array([item_idx])}
+            inputs = {"user": np.expand_dims(np.array([u]), axis=-1), "input_seq": np.array([seq]), "seq_feat": np.asarray(seq_feat).astype(np.float32),
+                      "candidate": np.array([item_idx]),
+                      "cand_feat": np.asarray(cand_feat).astype(np.float32)}
 
             # inverse to get descending sort
             predictions = -1.0 * self.predict(inputs)
@@ -790,6 +801,9 @@ class SASREC(tf.keras.Model):
         itemnum = dataset.itemnum
         train = dataset.user_train  # removing deepcopy
         valid = dataset.user_valid
+        train_feat = dataset.user_train_feat
+        valid_feat = dataset.user_valid_feat
+        item_feat = dataset.item_feat
 
         NDCG = 0.0
         valid_user = 0.0
@@ -803,10 +817,19 @@ class SASREC(tf.keras.Model):
             if len(train[u]) < 1 or len(valid[u]) < 1:
                 continue
 
-            seq = np.zeros([self.seq_max_len], dtype=np.int32)
+            seq = np.zeros([self.seq_max_len], dtype=np.float64)
             idx = self.seq_max_len - 1
-            for i in reversed(train[u]):
+            seq_len = len(valid_feat[u][0])
+            seq_feat = np.zeros((self.seq_max_len, seq_len), dtype=list)
+            cand_feat = np.zeros((self.num_neg_test + 1, seq_len), dtype=list)
+
+            idx = self.seq_max_len - 1
+            seq[idx] = valid[u][0]
+            seq_feat[idx] = valid_feat[u][0]
+            idx -= 1
+            for i, j in zip(reversed(train[u]), reversed(train_feat[u])):
                 seq[idx] = i
+                seq_feat[idx] = j
                 idx -= 1
                 if idx == -1:
                     break
@@ -814,16 +837,24 @@ class SASREC(tf.keras.Model):
             rated = set(train[u])
             rated.add(0)
             item_idx = [valid[u][0]]
+
+            try:
+                cand_feat[0] = list(item_feat[valid[u][0]])
+            except:
+                pass
             for _ in range(self.num_neg_test):
                 t = np.random.randint(1, itemnum + 1)
                 while t in rated:
                     t = np.random.randint(1, itemnum + 1)
                 item_idx.append(t)
+                try:
+                    cand_feat[_+1] = list(item_feat[t])
+                except:
+                    pass
 
-            inputs = {}
-            inputs["user"] = np.expand_dims(np.array([u]), axis=-1)
-            inputs["input_seq"] = np.array([seq])
-            inputs["candidate"] = np.array([item_idx])
+            inputs = {"user": np.expand_dims(np.array([u]), axis=-1), "input_seq": np.array([seq]), "seq_feat": np.asarray(seq_feat).astype(np.float32),
+                      "candidate": np.array([item_idx]),
+                      "cand_feat": np.asarray(cand_feat).astype(np.float32)}
 
             # predictions = -model.predict(sess, [u], [seq], item_idx)
             predictions = -1.0 * self.predict(inputs)

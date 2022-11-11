@@ -178,6 +178,7 @@ class SSEPT(SASREC):
         input_seq = inputs["input_seq"]
         candidate = inputs["candidate"]
         seq_feat = inputs["seq_feat"]
+        cand_feat = inputs["cand_feat"]
 
         mask = tf.expand_dims(tf.cast(tf.not_equal(input_seq, 0), tf.float32), -1)
         seq_embeddings, positional_embeddings = self.embedding(input_seq)  # (1, s, h)
@@ -207,7 +208,9 @@ class SSEPT(SASREC):
         )  # (b*s1, h1+h2)
 
         seq_emb = tf.cast(seq_emb, dtype=tf.float32)
-        seq_feat = tf.reshape(seq_feat, [seq_emb.shape[0], seq_feat.shape[2]])
+        seq_feat = tf.convert_to_tensor(seq_feat)
+        cand_feat = tf.convert_to_tensor(cand_feat)
+        seq_feat = tf.reshape(seq_feat, [seq_emb.shape[0], seq_feat.shape[1]])
         seq_emb = tf.concat([seq_emb, seq_feat], 1)
 
         candidate_emb = self.item_embedding_layer(candidate)  # (b, s2, h2)
@@ -216,7 +219,11 @@ class SSEPT(SASREC):
             tf.concat([candidate_emb, test_user_emb], 1), [-1, self.hidden_units]
         )  # (b*s2, h1+h2)
 
+        cand_feat = tf.reshape(cand_feat, [candidate_emb.shape[0], cand_feat.shape[1]])
+        candidate_emb = tf.concat([candidate_emb, cand_feat], 1)
+
         candidate_emb = tf.transpose(candidate_emb, perm=[1, 0])  # (h1+h2, b*s2)
+
         test_logits = tf.matmul(seq_emb, candidate_emb)  # (b*s1, b*s2)
 
         test_logits = tf.reshape(
