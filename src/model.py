@@ -751,12 +751,25 @@ class SASREC(tf.keras.Model):
             seq[idx] = valid[u][0]
             seq_feat[idx] = valid_feat[u][0]
             idx -= 1
-            for i, j in zip(reversed(train[u]), reversed(train_feat[u])):
-                seq[idx] = i
-                seq_feat[idx] = j
-                idx -= 1
-                if idx == -1:
-                    break
+            # for i, j in zip(reversed(train[u]), reversed(train_feat[u])):
+            #     seq[idx] = i
+            #     seq_feat[idx] = j
+            #     idx -= 1
+            #     if idx == -1:
+            #         break
+
+            len_utrain, len_ufeat = len(train[u]), len(train_feat[u])
+            # print("self.seq_max_len ", self.seq_max_len, " len_utrain", len_utrain, " len_ufeat ", len_ufeat)
+            # print("np.array(train_feat[u]) ", np.array(train_feat[u]))
+            if self.seq_max_len > len_utrain:
+                seq[self.seq_max_len - len_utrain:] = train[u]
+            else:
+                seq = train[u][-self.seq_max_len - 1:]
+            if self.seq_max_len > len_ufeat:
+                seq_feat[self.seq_max_len - len_ufeat:] = np.array(train_feat[u])
+            else:
+                seq_feat = np.array(train_feat[u][-self.seq_max_len - 1])
+
             rated = set(train[u])
             rated.add(0)
             item_idx = [test[u][0]]
@@ -781,8 +794,11 @@ class SASREC(tf.keras.Model):
             # inverse to get descending sort
             predictions = -1.0 * self.predict(inputs)
             predictions = np.array(predictions)
+            print("pred ", predictions)
             predictions = predictions[0]
 
+            print("pred argsort ", predictions.argsort())
+            print("again pred argsort ", predictions.argsort().argsort()[0])
             rank = predictions.argsort().argsort()[0]
 
             valid_user += 1
@@ -827,12 +843,25 @@ class SASREC(tf.keras.Model):
             seq[idx] = valid[u][0]
             seq_feat[idx] = valid_feat[u][0]
             idx -= 1
-            for i, j in zip(reversed(train[u]), reversed(train_feat[u])):
-                seq[idx] = i
-                seq_feat[idx] = j
-                idx -= 1
-                if idx == -1:
-                    break
+
+            # for i, j in zip(reversed(train[u]), reversed(train_feat[u])):
+            #     seq[idx] = i
+            #     seq_feat[idx] = j
+            #     idx -= 1
+            #     if idx == -1:
+            #         break
+
+            len_utrain, len_ufeat = len(train[u]), len(train_feat[u])
+            # print("self.seq_max_len ", self.seq_max_len, " len_utrain", len_utrain, " len_ufeat ", len_ufeat)
+            # print("np.array(train_feat[u]) ", np.array(train_feat[u]))
+            if self.seq_max_len > len_utrain:
+                seq[self.seq_max_len - len_utrain:] = train[u]
+            else:
+                seq = train[u][-self.seq_max_len - 1:]
+            if self.seq_max_len > len_ufeat:
+                seq_feat[self.seq_max_len - len_ufeat:] = np.array(train_feat[u])
+            else:
+                seq_feat = np.array(train_feat[u][-self.seq_max_len - 1])
 
             rated = set(train[u])
             rated.add(0)
