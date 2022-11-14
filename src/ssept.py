@@ -142,9 +142,12 @@ class SSEPT(SASREC):
         seq_emb = tf.cast(seq_emb, dtype=tf.float32)
         pos_emb = tf.cast(pos_emb, dtype=tf.float32)
         neg_emb = tf.cast(neg_emb, dtype=tf.float32)
-        seq_feat = tf.reshape(seq_feat, [seq_emb.shape[0], seq_feat.shape[2]])
-        pos_feat = tf.reshape(pos_feat, [pos_emb.shape[0], pos_feat.shape[2]])
-        neg_feat = tf.reshape(neg_feat, [neg_emb.shape[0], neg_feat.shape[2]])
+        h, w = tf.shape(seq_emb)[0], tf.shape(seq_feat)[2]
+        seq_feat = tf.reshape(seq_feat, [h, w])
+        h, w = tf.shape(pos_emb)[0], tf.shape(pos_feat)[2]
+        pos_feat = tf.reshape(pos_feat, [h, w])
+        h, w = tf.shape(neg_emb)[0], tf.shape(neg_feat)[2]
+        neg_feat = tf.reshape(neg_feat, [h, w])
 
         seq_emb = tf.concat([seq_emb, seq_feat], 1)
         pos_emb = tf.concat([pos_emb, pos_feat], 1)

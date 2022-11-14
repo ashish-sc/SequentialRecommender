@@ -200,11 +200,12 @@ if __name__ == "__main__":
 
     # Save model weights
     path = 'Weights_folder/Weights'
-    model.save_weights(path)
+    # tf.saved_model.save(model, path)
+    model.save(path)
     print('Model Saved!')
 
     # load model
-    savedModel = model.load_weights(path)
+    model = tf.keras.models.load_model(path)#model.load_weights(path)
     print('Model Loaded!')
 
     end = time.time()
