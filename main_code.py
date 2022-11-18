@@ -162,10 +162,11 @@ def data_prep():
 
     with open('data.p', 'wb') as fp:
         pickle.dump(data, fp, protocol=pickle.HIGHEST_PROTOCOL)
+    return data
 
 
 if __name__ == "__main__":
-    data_prep()
+    #data = data_prep()
     print("data read complete")
     with open('data.p', 'rb') as fp:
         data = pickle.load(fp)
@@ -196,17 +197,20 @@ if __name__ == "__main__":
                                                      save_weights_only=True,
                                                      verbose=1)
     start = time.time()
-    t_test = model.train(data, sampler, num_epochs=num_epochs, batch_size=batch_size, lr=lr, val_epoch=6)
 
+    t_test = model.train(data, sampler, num_epochs=num_epochs, batch_size=batch_size, lr=lr, val_epoch=6)
     # Save model weights
     path = 'Weights_folder/Weights'
-    # tf.saved_model.save(model, path)
-    model.save(path)
+    # tf.saved_model.save(model, path, signatures=model.call)
+    # model.save(path, save_format='tf')
+    model.save_weights(path)
     print('Model Saved!')
 
     # load model
-    model = tf.keras.models.load_model(path)#model.load_weights(path)
+    load_status = model.load_weights(path)#tf.saved_model.load(path)##tf.keras.models.load_model(path, compile=False)
+    load_status.assert_consumed()
     print('Model Loaded!')
+
 
     end = time.time()
     train_time = end - start

@@ -58,7 +58,7 @@ class SASRecDataSet:
 
     def data_partition(self):
         # assume user/item index starting from 1
-        df = pd.read_csv(self.filename, sep='\t', nrows=50)
+        df = pd.read_csv(self.filename, sep='\t', nrows=200)
         # df['weekday'] = df['vplay_ts'].dt.dayofweek
         # df["Is Weekend"] = df['vplay_ts'].dt.dayofweek > 4
 
@@ -90,8 +90,8 @@ class SASRecDataSet:
             temp_li.append(float(ibias))
             # for _ in tag_name_emb:
             #     temp_li.append(float(_))
-            #for _ in referrerEmb:
-            #    temp_li.append(_)
+            # for _ in referrerEmb:
+            #     temp_li.append(_)
             self.User[user_li.index(u)+1].append(item_li.index(i)+1)
             self.User_feat[user_li.index(u)+1].append(temp_li)
             item_feat_temp[item_li.index(i)+1].append(temp_li)

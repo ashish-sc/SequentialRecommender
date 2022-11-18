@@ -513,6 +513,77 @@ class SASREC(tf.keras.Model):
 
         return pos_logits, neg_logits, istarget
 
+    def predict_inter(self, dataset, k):
+        """
+        Predict on the test users (users with at least 3 items)
+        """
+        usernum = dataset.usernum
+        itemnum = dataset.itemnum
+        train = dataset.user_train  # removing deepcopy
+        valid = dataset.user_valid
+        test = dataset.user_test
+        train_feat = dataset.user_train_feat
+        valid_feat = dataset.user_valid_feat
+        item_feat = dataset.item_feat
+
+        users = range(1, usernum + 1)
+
+        for u in tqdm(users, ncols=70, leave=False, unit="b"):
+            if len(train[u]) < 1 or len(test[u]) < 1:
+                continue
+
+            seq = np.zeros([self.seq_max_len], dtype=np.float64)
+            seq_len = len(valid_feat[u][0])
+            seq_feat = np.zeros((self.seq_max_len, seq_len), dtype=list)
+            cand_feat = np.zeros((self.num_neg_test+1, seq_len), dtype=list)
+            idx = self.seq_max_len - 1
+            seq[idx] = valid[u][0]
+            seq_feat[idx] = valid_feat[u][0]
+            idx -= 1
+
+            len_utrain, len_ufeat = len(train[u]), len(train_feat[u])
+            if self.seq_max_len > len_utrain:
+                seq[self.seq_max_len - len_utrain-1:-1] = train[u]
+            else:
+                seq[:-1] = train[u][-self.seq_max_len + 1:]
+            if self.seq_max_len > len_ufeat:
+                seq_feat[self.seq_max_len - len_ufeat-1:-1] = np.array(train_feat[u])
+            else:
+                seq_feat[:-1] = np.array(train_feat[u][-self.seq_max_len + 1])
+
+            rated = set(train[u])
+            rated.add(0)
+            item_idx = [test[u][0]]
+            try:
+                cand_feat[0] = list(item_feat[test[u][0]])
+            except:
+                pass
+            for _ in range(self.num_neg_test):
+                t = np.random.randint(1, itemnum + 1)
+                while t in rated:
+                    t = np.random.randint(1, itemnum + 1)
+                item_idx.append(t)
+                try:
+                    cand_feat[_+1] = list(item_feat[t])
+                except:
+                    pass
+
+            inputs = {"user": np.expand_dims(np.array([u]), axis=-1), "input_seq": np.array([seq]), "seq_feat": np.asarray(seq_feat).astype(np.float32),
+                      "candidate": np.array([item_idx]),
+                      "cand_feat": np.asarray(cand_feat).astype(np.float32)}
+
+            # inverse to get descending sort
+            predictions = -1.0 * self.predict(inputs)
+            predictions = np.array(predictions)
+            # print("pred ", predictions)
+            predictions = predictions[0]
+
+            # print("pred argsort ", predictions.argsort())
+            # print("again pred argsort ", predictions.argsort().argsort()[0])
+            rank = predictions.argsort().argsort()[:k]
+
+        return rank
+
     def predict(self, inputs):
         """Returns the logits for the test items.
 
@@ -658,14 +729,14 @@ class SASREC(tf.keras.Model):
                 "negative": tf.TensorSpec(
                     shape=(None, self.seq_max_len), dtype=tf.float32
                 ),
-                "seq_feat": tf.TensorSpec(shape=(None, self.seq_max_len), dtype=tf.float32),
-                "pos_feat": tf.TensorSpec(shape=(None, self.seq_max_len), dtype=tf.float32),
-                "neg_feat": tf.TensorSpec(shape=(None, self.seq_max_len), dtype=tf.float32),
+                "seq_feat": tf.TensorSpec(shape=(None, self.seq_max_len, len(dataset.user_train_feat[1][0])), dtype=tf.float32),
+                "pos_feat": tf.TensorSpec(shape=(None, self.seq_max_len, len(dataset.user_train_feat[1][0])), dtype=tf.float32),
+                "neg_feat": tf.TensorSpec(shape=(None, self.seq_max_len, len(dataset.user_train_feat[1][0])), dtype=tf.float32),
             },
             tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
         ]
 
-        #@tf.function(input_signature=train_step_signature)
+        # @tf.function(input_signature=train_step_signature)
         def train_step(inp, tar):
             with tf.GradientTape() as tape:
                 pos_logits, neg_logits, loss_mask = self(inp, training=True)
@@ -710,6 +781,7 @@ class SASREC(tf.keras.Model):
                 )
                 # t0.start()
 
+        t_valid = self.evaluate_valid(dataset)
         t_test = self.evaluate(dataset)
         print(f"\nepoch: {epoch}, test (NDCG@10: {t_test[0]}, HR@10: {t_test[1]})")
 
@@ -733,10 +805,10 @@ class SASREC(tf.keras.Model):
         HT = 0.0
         valid_user = 0.0
 
-        if usernum > 10000:
-            users = random.sample(range(1, usernum + 1), 10000)
-        else:
-            users = range(1, usernum + 1)
+        # if usernum > 10000:
+        #     users = random.sample(range(1, usernum + 1), 10000)
+        # else:
+        users = range(1, usernum + 1)
 
         for u in tqdm(users, ncols=70, leave=False, unit="b"):
 
@@ -760,15 +832,15 @@ class SASREC(tf.keras.Model):
 
             len_utrain, len_ufeat = len(train[u]), len(train_feat[u])
             # print("self.seq_max_len ", self.seq_max_len, " len_utrain", len_utrain, " len_ufeat ", len_ufeat)
-            # print("np.array(train_feat[u]) ", np.array(train_feat[u]))
+            # print("np.array(train_feat[u]) ", np.array(train_feat[u]).shape)
             if self.seq_max_len > len_utrain:
-                seq[self.seq_max_len - len_utrain:] = train[u]
+                seq[self.seq_max_len - len_utrain-1:-1] = train[u]
             else:
-                seq = train[u][-self.seq_max_len - 1:]
+                seq[:-1] = train[u][-self.seq_max_len + 1:]
             if self.seq_max_len > len_ufeat:
-                seq_feat[self.seq_max_len - len_ufeat:] = np.array(train_feat[u])
+                seq_feat[self.seq_max_len - len_ufeat-1:-1] = np.array(train_feat[u])
             else:
-                seq_feat = np.array(train_feat[u][-self.seq_max_len - 1])
+                seq_feat[:-1] = np.array(train_feat[u][-self.seq_max_len + 1])
 
             rated = set(train[u])
             rated.add(0)
@@ -794,11 +866,11 @@ class SASREC(tf.keras.Model):
             # inverse to get descending sort
             predictions = -1.0 * self.predict(inputs)
             predictions = np.array(predictions)
-            print("pred ", predictions)
+            # print("pred ", predictions)
             predictions = predictions[0]
 
-            print("pred argsort ", predictions.argsort())
-            print("again pred argsort ", predictions.argsort().argsort()[0])
+            # print("pred argsort ", predictions.argsort())
+            # print("again pred argsort ", predictions.argsort().argsort()[0])
             rank = predictions.argsort().argsort()[0]
 
             valid_user += 1
@@ -853,15 +925,14 @@ class SASREC(tf.keras.Model):
 
             len_utrain, len_ufeat = len(train[u]), len(train_feat[u])
             # print("self.seq_max_len ", self.seq_max_len, " len_utrain", len_utrain, " len_ufeat ", len_ufeat)
-            # print("np.array(train_feat[u]) ", np.array(train_feat[u]))
             if self.seq_max_len > len_utrain:
-                seq[self.seq_max_len - len_utrain:] = train[u]
+                seq[self.seq_max_len - len_utrain-1:-1] = train[u]
             else:
-                seq = train[u][-self.seq_max_len - 1:]
+                seq[:-1] = train[u][-self.seq_max_len + 1:]
             if self.seq_max_len > len_ufeat:
-                seq_feat[self.seq_max_len - len_ufeat:] = np.array(train_feat[u])
+                seq_feat[self.seq_max_len - len_ufeat-1:-1] = np.array(train_feat[u])
             else:
-                seq_feat = np.array(train_feat[u][-self.seq_max_len - 1])
+                seq_feat[:-1] = np.array(train_feat[u][-self.seq_max_len + 1])
 
             rated = set(train[u])
             rated.add(0)
