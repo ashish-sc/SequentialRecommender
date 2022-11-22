@@ -83,9 +83,9 @@ class SSEPT(SASREC):
         input_seq = x["input_seq"]
         pos = x["positive"]
         neg = x["negative"]
-        seq_feat = x["seq_feat"]
-        pos_feat = x["pos_feat"]
-        neg_feat = x["neg_feat"]
+        seq_feat = tf.convert_to_tensor(x["seq_feat"])
+        pos_feat = tf.convert_to_tensor(x["pos_feat"])
+        neg_feat = tf.convert_to_tensor(x["neg_feat"])
         mask = tf.expand_dims(tf.cast(tf.not_equal(input_seq, 0), tf.float32), -1)
         seq_embeddings, positional_embeddings = self.embedding(input_seq)
 
