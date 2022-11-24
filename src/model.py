@@ -582,13 +582,14 @@ class SASREC(tf.keras.Model):
 
     @tf.function(input_signature=[
         tf.TensorSpec([None], "string", name="recent_posts"),
+        tf.TensorSpec([None], "string", name="cand_posts"),
         tf.TensorSpec([32], tf.float32, name="user_emb_like"),
         tf.TensorSpec([], tf.float32, name="user_bias_like"),
         tf.TensorSpec([32], tf.float32, name="item_emb_like"),
         tf.TensorSpec([], tf.float32, name="item_bias_like"),
         tf.TensorSpec([], tf.int32, name="topK")
     ])
-    def inference(self, recent_posts, user_emb_like, user_bias_like, item_emb_like, item_bias_like, topK):
+    def inference(self, recent_posts, cand_posts, user_emb_like, user_bias_like, item_emb_like, item_bias_like, topK):
         return []
 
     def predict_inter(self, dataset, k):
