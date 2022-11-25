@@ -391,7 +391,6 @@ class SASREC(tf.keras.Model):
         self.dropout_rate = kwargs.get("dropout_rate", 0.5)
         self.l2_reg = kwargs.get("l2_reg", 0.0)
         self.num_neg_test = kwargs.get("num_neg_test", 100)
-        self.emb = 66
         self.item_feat = {}
 
         self.item_embedding_layer = tf.keras.layers.Embedding(
@@ -513,84 +512,6 @@ class SASREC(tf.keras.Model):
         )
 
         return pos_logits, neg_logits, istarget
-
-    def predict_inter2(self, dataset):
-        """
-        Predict on the test users (users with at least 3 items)
-        """
-        usernum = dataset.usernum
-        itemnum = dataset.itemnum
-        train = dataset.user_train  # removing deepcopy
-        valid = dataset.user_valid
-        test = dataset.user_test
-        train_feat = dataset.user_train_feat
-        valid_feat = dataset.user_valid_feat
-        item_feat = dataset.item_feat
-
-        users = range(1, usernum + 1)
-
-        for u in tqdm(users, ncols=70, leave=False, unit="b"):
-            if len(train[u]) < 1 or len(test[u]) < 1:
-                continue
-
-            seq = np.zeros([self.seq_max_len], dtype=np.float64)
-            seq_len = len(valid_feat[u][0])
-            seq_feat = np.zeros((self.seq_max_len, seq_len), dtype=list)
-            cand_feat = np.zeros((self.num_neg_test+1, seq_len), dtype=list)
-            idx = self.seq_max_len - 1
-            seq[idx] = valid[u][0]
-            seq_feat[idx] = valid_feat[u][0]
-            idx -= 1
-
-            len_utrain, len_ufeat = len(train[u]), len(train_feat[u])
-            if self.seq_max_len > len_utrain:
-                seq[self.seq_max_len - len_utrain-1:-1] = train[u]
-            else:
-                seq[:-1] = train[u][-self.seq_max_len + 1:]
-            if self.seq_max_len > len_ufeat:
-                seq_feat[self.seq_max_len - len_ufeat-1:-1] = np.array(train_feat[u])
-            else:
-                seq_feat[:-1] = np.array(train_feat[u][-self.seq_max_len + 1])
-
-            rated = set(train[u])
-            rated.add(0)
-            item_idx = [test[u][0]]
-            try:
-                cand_feat[0] = list(item_feat[test[u][0]])
-            except:
-                pass
-            for _ in range(self.num_neg_test):
-                t = np.random.randint(1, itemnum + 1)
-                while t in rated:
-                    t = np.random.randint(1, itemnum + 1)
-                item_idx.append(t)
-                try:
-                    cand_feat[_+1] = list(item_feat[t])
-                except:
-                    pass
-
-            inputs = {"user": np.expand_dims(np.array([u]), axis=-1), "input_seq": np.array([seq]), "seq_feat": np.asarray(seq_feat).astype(np.float32),
-                      "candidate": np.array([item_idx]),
-                      "cand_feat": np.asarray(cand_feat).astype(np.float32)}
-
-            # inverse to get descending sort
-            predictions = -1.0 * self.predict(inputs)
-            predictions = np.array(predictions)
-            predictions = predictions[0]
-
-        return predictions
-
-    @tf.function(input_signature=[
-        tf.TensorSpec([None], "string", name="recent_posts"),
-        tf.TensorSpec([None], "string", name="cand_posts"),
-        tf.TensorSpec([32], tf.float32, name="user_emb_like"),
-        tf.TensorSpec([], tf.float32, name="user_bias_like"),
-        tf.TensorSpec([32], tf.float32, name="item_emb_like"),
-        tf.TensorSpec([], tf.float32, name="item_bias_like"),
-        tf.TensorSpec([], tf.int32, name="topK")
-    ])
-    def inference(self, recent_posts, cand_posts, user_emb_like, user_bias_like, item_emb_like, item_bias_like, topK):
-        return []
 
     def predict_inter(self, dataset, k):
         """
