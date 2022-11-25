@@ -278,67 +278,63 @@ class SSEPT(SASREC):
         return loss
 
     @tf.function(input_signature=[
-        tf.TensorSpec([None], "string", name="recent_posts"),
-        tf.TensorSpec([None], "string", name="cand_posts"),
-        tf.TensorSpec([32], tf.float32, name="user_emb"),
-        tf.TensorSpec([], tf.float32, name="user_bias"),
-        tf.TensorSpec([None, 32], tf.float32, name="recent_post_embs"),
-        tf.TensorSpec([None], tf.float32, name="recent_post_bias"),
-        tf.TensorSpec([None, 32], tf.float32, name="cand_post_embs"),
-        tf.TensorSpec([None], tf.float32, name="cand_post_bias"),
+        tf.TensorSpec([None], tf.int32, name="recent_posts"),
+        tf.TensorSpec([None], tf.int32, name="cand_posts"),
+        tf.TensorSpec([None, 32], tf.float32, name="recent_post_feat"),
+        tf.TensorSpec([None, 32], tf.float32, name="cand_post_feat"),
     ])
-    def inference(self, recent_posts, cand_posts, user_emb, user_bias, recent_post_embs,
-                  recent_post_bias, cand_post_embs, cand_post_bias):
-        seq = np.zeros([self.seq_max_len], dtype=np.float64)
-        seq_len = tf.shape(user_emb)[0] + tf.shape(recent_post_embs)[1] + 2
-        seq_feat = np.zeros((self.seq_max_len, 66), dtype=list)
-
-        cand_user_emb = tf.repeat([user_emb], repeats=len(cand_post_embs), axis=0)
-        cand_user_bias = tf.repeat(user_bias, repeats=len(cand_post_bias), axis=0)
-        cand_user_feat = tf.concat([cand_user_emb, cand_user_bias[:, None]], axis=1)
-        cand_feat = tf.concat([cand_post_embs, cand_post_bias[:, None]], axis=1)
-        overall_cand_feat = tf.concat([cand_user_feat, cand_feat], axis=1)
-
-        recent_user_emb = tf.repeat([user_emb], repeats=len(recent_post_embs), axis=0)
-        recent_user_bias = tf.repeat(user_bias, repeats=len(recent_post_bias), axis=0)
-        recent_user_feat = tf.concat([recent_user_emb, recent_user_bias[:, None]], axis=1)
-        recent_feat = tf.concat([recent_post_embs, recent_post_bias[:, None]], axis=1)
-        overall_recent_feat = tf.concat([recent_user_feat, recent_feat], axis=1)
-
-        ####### Recent post sequence and feature creation #####################
-        len_rposts, len_rfeat = len(recent_posts), len(overall_recent_feat)
-        # print("len_rpost ", len_rposts.numpy(), " len_rfeat ", len_rfeat.numpy())
-        if self.seq_max_len > len_rposts:
-            seq[self.seq_max_len - len_rposts:] = recent_posts
-        else:
-            seq = recent_posts[-self.seq_max_len:]
-        if self.seq_max_len > len_rfeat:
-            seq_feat[self.seq_max_len - len_rfeat:] = np.array(overall_recent_feat)
-        else:
-            seq_feat = np.array(overall_recent_feat[-self.seq_max_len:])
-
-        cand_posts_new = np.zeros([self.num_neg_test + 1], dtype=np.float64)
-        cand_seq_feat = np.zeros((self.num_neg_test + 1, seq_len), dtype=list)
-
-        len_cposts, len_cfeat = len(cand_posts), len(overall_cand_feat)
-        if self.num_neg_test + 1 > len_cposts:
-            cand_posts_new[self.num_neg_test + 1 - len_cposts:] = cand_posts
-        else:
-            cand_posts_new = cand_posts[-self.num_neg_test - 1:]
-        if self.num_neg_test + 1 > len_cfeat:
-            cand_seq_feat[self.num_neg_test - len_cfeat + 1:] = np.array(overall_cand_feat)
-        else:
-            cand_seq_feat = np.array(overall_cand_feat[-self.num_neg_test - 1:])
+    def inference(self, recent_posts, cand_posts, recent_post_feat, cand_post_feat):
+        # seq = np.zeros([self.seq_max_len], dtype=np.float64)
+        # seq_len = tf.shape(user_emb)[0] + tf.shape(recent_post_embs)[1] + 2
+        # seq_feat = np.zeros((self.seq_max_len, 66), dtype=list)
+        #
+        # cand_user_emb = tf.repeat([user_emb], repeats=len(cand_post_embs), axis=0)
+        # cand_user_bias = tf.repeat(user_bias, repeats=len(cand_post_bias), axis=0)
+        # cand_user_feat = tf.concat([cand_user_emb, cand_user_bias[:, None]], axis=1)
+        # cand_feat = tf.concat([cand_post_embs, cand_post_bias[:, None]], axis=1)
+        # overall_cand_feat = tf.concat([cand_user_feat, cand_feat], axis=1)
+        #
+        # recent_user_emb = tf.repeat([user_emb], repeats=len(recent_post_embs), axis=0)
+        # recent_user_bias = tf.repeat(user_bias, repeats=len(recent_post_bias), axis=0)
+        # recent_user_feat = tf.concat([recent_user_emb, recent_user_bias[:, None]], axis=1)
+        # recent_feat = tf.concat([recent_post_embs, recent_post_bias[:, None]], axis=1)
+        # overall_recent_feat = tf.concat([recent_user_feat, recent_feat], axis=1)
+        #
+        # ####### Recent post sequence and feature creation #####################
+        # len_rposts, len_rfeat = len(recent_posts), len(overall_recent_feat)
+        # # print("len_rpost ", len_rposts.numpy(), " len_rfeat ", len_rfeat.numpy())
+        # if self.seq_max_len > len_rposts:
+        #     seq[self.seq_max_len - len_rposts:] = recent_posts
+        # else:
+        #     seq = recent_posts[-self.seq_max_len:]
+        # if self.seq_max_len > len_rfeat:
+        #     seq_feat[self.seq_max_len - len_rfeat:] = np.array(overall_recent_feat)
+        # else:
+        #     seq_feat = np.array(overall_recent_feat[-self.seq_max_len:])
+        #
+        # cand_posts_new = np.zeros([self.num_neg_test + 1], dtype=np.float64)
+        # cand_seq_feat = np.zeros((self.num_neg_test + 1, seq_len), dtype=list)
+        #
+        # len_cposts, len_cfeat = len(cand_posts), len(overall_cand_feat)
+        # if self.num_neg_test + 1 > len_cposts:
+        #     cand_posts_new[self.num_neg_test + 1 - len_cposts:] = cand_posts
+        # else:
+        #     cand_posts_new = cand_posts[-self.num_neg_test - 1:]
+        # if self.num_neg_test + 1 > len_cfeat:
+        #     cand_seq_feat[self.num_neg_test - len_cfeat + 1:] = np.array(overall_cand_feat)
+        # else:
+        #     cand_seq_feat = np.array(overall_cand_feat[-self.num_neg_test - 1:])
 
         ####### Candidate post sequence and feature creation #####################
-        inputs = {"user": np.expand_dims(np.array([1]), axis=-1), "input_seq": np.array([seq]),
-                  "seq_feat": np.asarray(seq_feat).astype(np.float32),
-                  "candidate": np.array([cand_posts_new]),
-                  "cand_feat": np.asarray(cand_seq_feat).astype(np.float32)}
+        inputs =  {"user": tf.expand_dims(tf.convert_to_tensor([1]), axis=-1),
+                  "input_seq": tf.convert_to_tensor([recent_posts]),
+                  "seq_feat": tf.convert_to_tensor(recent_post_feat),
+                  "candidate": tf.convert_to_tensor([cand_posts]),
+                  "cand_feat": tf.convert_to_tensor(cand_post_feat)}
 
         # inverse to get descending sort
         predictions = -1.0 * self.predict(inputs)
-        predictions = np.array(predictions)
-        predictions = predictions[0]
+        # predictions = np.array(predictions)
+        # predictions = predictions[0]
 
         return predictions

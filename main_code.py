@@ -140,18 +140,18 @@ print("Tensorflow version: {}".format(tf.__version__))
 # dfk.head()
 
 
-num_epochs = 5
-batch_size = 2
+num_epochs = 7
+batch_size = 16
 RANDOM_SEED = 100  # Set None for non-deterministic result
 
 lr = 0.001  # learning rate
-maxlen = 50  # maximum sequence length for each user
+maxlen = 60  # maximum sequence length for each user
 num_blocks = 2  # number of transformer blocks
 hidden_units = 100  # number of units in the attention calculation
-num_heads = 1  # number of attention heads
+num_heads = 2  # number of attention heads
 dropout_rate = 0.1  # dropout rate
 l2_emb = 0.0  # L2 regularization coefficient
-num_neg_test = 100  # number of negative examples per positive example
+num_neg_test = 1000  # number of negative examples per positive example
 model_name = 'ssept'  # 'sasrec' or 'ssept'
 
 
@@ -208,8 +208,8 @@ if __name__ == "__main__":
     print('Model Saved!')
 
     # load model
-    # model = tf.saved_model.load(path)##tf.keras.models.load_model(path, compile=False)#model.load_weights(path
-    # print('Model Loaded!')
+    # model = tf.keras.models.load_model(path)##tf.saved_model.load(path)##tf.keras.models.load_model(path, compile=False)#model.load_weights(path
+    print('Model Loaded!')
 
     end = time.time()
     train_time = end - start
