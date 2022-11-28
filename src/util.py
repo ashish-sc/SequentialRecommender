@@ -28,6 +28,8 @@ class SASRecDataSet:
         self.User_feat = defaultdict(list)
         self.item_feat = defaultdict(list)
         self.Items = set()
+        self.user_list = {}
+        self.item_list = {}
         self.user_train = {}
         self.user_valid = {}
         self.user_test = {}
@@ -95,6 +97,8 @@ class SASRecDataSet:
             self.User[user_li.index(u)+1].append(item_li.index(i)+1)
             self.User_feat[user_li.index(u)+1].append(temp_li)
             item_feat_temp[item_li.index(i)+1].append(temp_li)
+            self.user_list[user_li.index(u)+1] = u
+            self.item_list[item_li.index(i) + 1] = i
 
         for _ in item_feat_temp.keys():
             self.item_feat[_] = np.mean(item_feat_temp[_], axis=0)

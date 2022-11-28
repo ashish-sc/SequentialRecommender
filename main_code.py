@@ -175,7 +175,7 @@ if __name__ == "__main__":
                   user_num=data.usernum,
                   seq_max_len=maxlen,
                   num_blocks=num_blocks,
-                  # embedding_dim=hidden_units,  # optional
+                  embedding_dim=hidden_units,  # optional
                   user_embedding_dim=10,
                   item_embedding_dim=hidden_units,
                   attention_dim=hidden_units,

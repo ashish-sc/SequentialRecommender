@@ -278,12 +278,13 @@ class SSEPT(SASREC):
         return loss
 
     @tf.function(input_signature=[
+        tf.TensorSpec([], tf.int32, name="userId"),
         tf.TensorSpec([None], tf.int32, name="recent_posts"),
         tf.TensorSpec([None], tf.int32, name="cand_posts"),
-        tf.TensorSpec([None, 32], tf.float32, name="recent_post_feat"),
-        tf.TensorSpec([None, 32], tf.float32, name="cand_post_feat"),
+        tf.TensorSpec([None, 66], tf.float32, name="recent_post_feat"),
+        tf.TensorSpec([None, 66], tf.float32, name="cand_post_feat"),
     ])
-    def inference(self, recent_posts, cand_posts, recent_post_feat, cand_post_feat):
+    def inference(self, userId, recent_posts, cand_posts, recent_post_feat, cand_post_feat):
         # seq = np.zeros([self.seq_max_len], dtype=np.float64)
         # seq_len = tf.shape(user_emb)[0] + tf.shape(recent_post_embs)[1] + 2
         # seq_feat = np.zeros((self.seq_max_len, 66), dtype=list)
@@ -326,7 +327,7 @@ class SSEPT(SASREC):
         #     cand_seq_feat = np.array(overall_cand_feat[-self.num_neg_test - 1:])
 
         ####### Candidate post sequence and feature creation #####################
-        inputs =  {"user": tf.expand_dims(tf.convert_to_tensor([1]), axis=-1),
+        inputs = {"user": tf.expand_dims(tf.convert_to_tensor([userId]), axis=-1),
                   "input_seq": tf.convert_to_tensor([recent_posts]),
                   "seq_feat": tf.convert_to_tensor(recent_post_feat),
                   "candidate": tf.convert_to_tensor([cand_posts]),
